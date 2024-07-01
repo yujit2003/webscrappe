@@ -3,6 +3,7 @@ require("dotenv").config();
 
 const scrapeLogic = async (res) => {
   const browser = await puppeteer.launch({
+    headless: false,
     args: [
       "--disable-setuid-sandbox",
       "--no-sandbox",
@@ -17,29 +18,26 @@ const scrapeLogic = async (res) => {
   try {
     const page = await browser.newPage();
 
-    await page.goto("https://developer.chrome.com/");
+    await page.goto("https://www.startupindia.gov.in/content/sih/en/startupgov/regulatory_updates.html", {
+      waitUntil: "domcontentloaded",
+    });
 
     // Set screen size
     await page.setViewport({ width: 1080, height: 1024 });
 
     // Type into search box
-    await page.type(".search-box__input", "automate beyond recorder");
+    const result = await page.$$eval('body > div.market-research.onload > div:nth-child(2) > div > div > div > div > div > div > div > div > table > tbody > tr', rows => {
+      return Array.from(rows, row => {
+        const columns = row.querySelectorAll('td');
+        return Array.from(columns, column => column.innerText);
+      });
+    });
 
-    // Wait and click on first result
-    const searchResultSelector = ".search-box__link";
-    await page.waitForSelector(searchResultSelector);
-    await page.click(searchResultSelector);
-
-    // Locate the full title with a unique string
-    const textSelector = await page.waitForSelector(
-      "text/Customize and automate"
-    );
-    const fullTitle = await textSelector.evaluate((el) => el.textContent);
 
     // Print the full title
-    const logStatement = `The title of this blog post is ${fullTitle}`;
+    const logStatement = `The title of this blog post is ${result}`;
     console.log(logStatement);
-    res.send(logStatement);
+    res.send({policy: result});
   } catch (e) {
     console.error(e);
     res.send(`Something went wrong while running Puppeteer: ${e}`);
